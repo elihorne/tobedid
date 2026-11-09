@@ -1,0 +1,224 @@
+/* to be did: a floating index card. Theme variables only, so it follows light and dark. */
+
+.tobedid {
+	position: fixed;
+	z-index: 20;
+	width: 288px;
+	box-sizing: border-box;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.10);
+	color: var(--text-normal);
+	font-size: 13px;
+	line-height: 1.3;
+	user-select: none;
+	overflow: hidden;
+	transition: border-radius 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tobedid.is-hidden { display: none; }
+.tobedid.is-dragging { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 16px 40px rgba(0, 0, 0, 0.16); }
+
+/* Header: date, count, minimize. Doubles as the drag handle and, minimized, the whole pill. */
+.tobedid .ac-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 8px 6px 16px;
+	cursor: grab;
+}
+.tobedid.is-dragging .ac-head { cursor: grabbing; }
+
+.tobedid .ac-title {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+.tobedid .ac-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tobedid .ac-title-date {
+	color: var(--text-faint);
+	font-weight: 400;
+	font-size: 12px;
+	white-space: nowrap;
+}
+.tobedid:not(.is-collapsed) .ac-title { cursor: pointer; }
+
+/* Day arrows: quiet until you hover the header, and always shown while you're off today. */
+.tobedid .ac-nav { display: flex; opacity: 0; transition: opacity 0.12s ease; }
+.tobedid .ac-head:hover .ac-nav,
+.tobedid.is-elsewhere .ac-nav { opacity: 1; }
+.tobedid.is-collapsed .ac-nav { display: none; }
+.tobedid .ac-nav .ac-btn { padding: 3px 2px; }
+.tobedid .ac-nav .ac-btn.is-disabled { opacity: 0.3; pointer-events: none; }
+
+.tobedid .ac-count {
+	color: var(--text-faint);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.tobedid .ac-btn {
+	display: flex;
+	padding: 4px;
+	border-radius: 5px;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+.tobedid .ac-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.tobedid .ac-btn svg { width: 14px; height: 14px; }
+
+/* Minimized: a pill showing whatever is in progress. */
+.tobedid.is-collapsed { width: auto; max-width: 320px; border-radius: 999px; }
+.tobedid.is-collapsed .ac-body { display: none; }
+.tobedid.is-collapsed .ac-head { padding: 6px 6px 6px 14px; cursor: pointer; }
+.tobedid.is-collapsed .ac-title { font-weight: 500; }
+
+/* The card: ruled lines, like the paper one. */
+.tobedid .ac-body { padding: 0 16px 12px; }
+
+.tobedid .ac-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 30px;
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 65%, transparent);
+}
+
+.tobedid .ac-text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tobedid .ac-row.is-done .ac-text {
+	color: var(--text-faint);
+	text-decoration: line-through;
+	text-decoration-color: var(--text-faint);
+}
+.tobedid .ac-row.is-carried .ac-text { color: var(--text-faint); }
+.tobedid .ac-row.has-link .ac-text { cursor: pointer; }
+.tobedid .ac-row.has-link .ac-text:hover { color: var(--text-accent); }
+
+.tobedid .ac-go {
+	display: flex;
+	color: var(--text-faint);
+	opacity: 0;
+	cursor: pointer;
+	transition: opacity 0.1s ease;
+}
+.tobedid .ac-row:hover .ac-go { opacity: 1; }
+.tobedid .ac-go:hover { color: var(--text-accent); }
+.tobedid .ac-go svg { width: 12px; height: 12px; }
+
+/* Someday: due dates and the overflow line. */
+.tobedid .ac-due { flex: none; color: var(--text-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tobedid .ac-due.is-overdue { color: var(--text-muted); }
+.tobedid .ac-row.ac-more { color: var(--text-muted); font-size: 12px; cursor: pointer; }
+.tobedid .ac-row.ac-more:hover { color: var(--text-accent); }
+
+/* Status marks: ring, ring with a center dot, full, arrow. */
+.tobedid .ac-mark {
+	flex: none;
+	position: relative;
+	width: 11px;
+	height: 11px;
+	box-sizing: border-box;
+	border-radius: 50%;
+	border: 1.5px solid var(--text-muted);
+	cursor: pointer;
+	transition: transform 0.12s ease;
+}
+.tobedid .ac-mark:hover { transform: scale(1.25); }
+.tobedid .ac-mark.is-progress {
+	border-color: var(--text-normal);
+	background: radial-gradient(circle, var(--text-normal) 0 2px, transparent 2.4px);
+}
+.tobedid .ac-mark.is-done { border-color: var(--text-normal); background: var(--text-normal); }
+.tobedid .ac-mark.is-carried { border: none; border-radius: 0; cursor: default; }
+.tobedid .ac-mark.is-carried:hover { transform: none; }
+.tobedid .ac-mark.is-carried::before {
+	content: '→';
+	position: absolute;
+	top: -3px;
+	left: -1px;
+	font-size: 12px;
+	line-height: 1;
+	color: var(--text-faint);
+}
+.tobedid .ac-mark.is-ghost { border: 1.5px dashed var(--background-modifier-border); cursor: default; }
+.tobedid .ac-mark.is-ghost:hover { transform: none; }
+
+.tobedid .ac-input,
+.tobedid .ac-input:focus,
+.tobedid .ac-input:hover {
+	flex: 1;
+	min-width: 0;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	font-size: 13px;
+	color: var(--text-normal);
+	user-select: text;
+}
+.tobedid .ac-input::placeholder { color: var(--text-faint); }
+
+.tobedid .ac-forward {
+	margin-top: 10px;
+	font-size: 12px;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+.tobedid .ac-forward:hover { color: var(--text-accent); }
+
+/* Cleared: one small moment when the last line is done. */
+.tobedid.is-cleared .ac-input::placeholder { color: var(--text-muted); }
+.tobedid.is-celebrating {
+	overflow: visible;
+	animation: ac-glow 1.4s ease-out;
+}
+.tobedid.is-celebrating .ac-row .ac-mark.is-done {
+	animation: ac-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+	animation-delay: var(--ac-delay, 0ms);
+}
+.tobedid.is-celebrating .ac-input-row { animation: ac-fade 0.6s ease 0.35s both; }
+
+.tobedid .ac-burst { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.tobedid .ac-spark {
+	position: absolute;
+	left: calc(var(--size) / -2);
+	top: calc(var(--size) / -2);
+	width: var(--size);
+	height: var(--size);
+	border-radius: 50%;
+	background: var(--text-normal);
+	animation: ac-spark 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.tobedid .ac-spark.is-accent { background: var(--interactive-accent); }
+
+@keyframes ac-glow {
+	0% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.10), 0 0 0 0 color-mix(in srgb, var(--interactive-accent) 40%, transparent); }
+	100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.10), 0 0 0 16px transparent; }
+}
+@keyframes ac-pop { 0% { transform: scale(1); } 40% { transform: scale(1.6); } 100% { transform: scale(1); } }
+@keyframes ac-spark {
+	0% { transform: translate(0, 0) scale(0.6); opacity: 1; }
+	55% { opacity: 1; }
+	100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; }
+}
+@keyframes ac-fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+	.tobedid.is-celebrating,
+	.tobedid.is-celebrating .ac-mark,
+	.tobedid.is-celebrating .ac-input-row { animation: none; }
+}
