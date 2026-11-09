@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>to be did · a daily card for Obsidian</title>
+  <meta name="description" content="A floating daily card for Obsidian. Ten lines, four marks, and a small moment when you finish. What did you do today? I did it.">
+  <meta property="og:title" content="to be did">
+  <meta property="og:description" content="A floating daily card for Obsidian. What did you do today? I did it.">
+  <meta property="og:url" content="https://tobedid.com">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="nav wrap">
+    <a class="wordmark" href="/"><span class="mark is-progress" aria-hidden="true"></span>to be did</a>
+    <a class="nav-link" href="https://github.com/elihorne/tobedid">GitHub</a>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">A daily card for Obsidian</p>
+        <h1>What did you do today?</h1>
+        <p class="lede">to be did is one small card that floats over your notes. Ten lines, four marks, and a little moment when the last one is done. Then you get to say it: I did it.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="https://github.com/elihorne/tobedid">Get it on GitHub</a>
+          <span class="btn btn-soon" aria-disabled="true">Obsidian community plugins · soon</span>
+        </div>
+      </div>
+
+      <div class="hero-card">
+        <div class="card" id="card" aria-label="An example card you can try">
+          <div class="card-head">
+            <div class="card-title"><span class="card-day">Today</span><span class="card-date" id="card-date"></span></div>
+            <div class="card-count" id="card-count"></div>
+          </div>
+          <ul class="card-list" id="card-list">
+            <li class="row is-done" data-state="done"><button class="mark is-done" aria-label="Done"></button><span class="text">Reply to the venue about the room</span></li>
+            <li class="row is-done" data-state="done"><button class="mark is-done" aria-label="Done"></button><span class="text">Send the recap</span><span class="go" aria-hidden="true">↗</span></li>
+            <li class="row is-progress" data-state="progress"><button class="mark is-progress" aria-label="In progress"></button><span class="text">Draft the launch outline</span><span class="go" aria-hidden="true">↗</span></li>
+            <li class="row is-new" data-state="new"><button class="mark is-new" aria-label="New"></button><span class="text">Review the pull request</span></li>
+            <li class="row is-carried" data-state="carried"><span class="mark is-carried" aria-label="Carried over"></span><span class="text">Book the dentist</span></li>
+            <li class="row row-input"><span class="mark is-ghost" aria-hidden="true"></span><span class="placeholder" id="placeholder"></span></li>
+            <li class="row row-empty"></li>
+            <li class="row row-empty"></li>
+          </ul>
+        </div>
+        <p class="hint">Try it: click the circles.</p>
+      </div>
+    </section>
+
+    <section class="marks wrap" aria-labelledby="marks-h">
+      <h2 id="marks-h" class="section-label">Four marks</h2>
+      <ul class="legend">
+        <li><span class="mark is-new"></span><strong>New</strong><span>On today's card, not started.</span></li>
+        <li><span class="mark is-progress"></span><strong>In progress</strong><span>Started. The pill shows it while you work.</span></li>
+        <li><span class="mark is-done"></span><strong>Done</strong><span>Finished. Struck through, still on the card.</span></li>
+        <li><span class="mark is-carried"></span><strong>Carried over</strong><span>Moved to the next workday, where it shows up again.</span></li>
+      </ul>
+    </section>
+
+    <section class="features wrap" aria-labelledby="features-h">
+      <h2 id="features-h" class="section-label">What it does</h2>
+      <div class="grid">
+        <article><h3>Ten lines, on purpose</h3><p>A card holds ten things at most, and most good days have five to seven. When it's full, finish something or carry it over.</p></article>
+        <article><h3>Always on screen</h3><p>The card floats over whatever note you're in. Drag it anywhere, or shrink it to a pill that shows what you're working on.</p></article>
+        <article><h3>Carry it over</h3><p>One right-click moves an unfinished line to the next workday, and Friday carries to Monday. Each new day offers to bring the leftovers forward.</p></article>
+        <article><h3>Back to the context</h3><p>End a line with a link and the card opens that note. Shift+Enter links whatever note you have open.</p></article>
+        <article><h3>Today, tomorrow, someday</h3><p>Step back through past cards or ahead to tomorrow. Point it at a longer list and the stop after tomorrow is Someday, ready to pull from.</p></article>
+        <article><h3>A small moment</h3><p>Finish the last line and the card says so, once. Then it gets out of the way.</p></article>
+      </div>
+    </section>
+
+    <section class="markdown wrap" aria-labelledby="md-h">
+      <div class="md-copy">
+        <h2 id="md-h" class="section-label">It's just a note</h2>
+        <p class="big">Every card is a plain markdown file, one per day.</p>
+        <p>Search it, link it, sync it, or let a script or an agent write it. Progress counts live in the frontmatter, there's a small API for other plugins, and nothing is locked away in a database.</p>
+      </div>
+<pre class="code" aria-label="Example card file"><code><span class="c">daily/cards/2026-11-10.md</span>
+---
+type: card
+date: 2026-11-10
+committed: 4
+done: 2
+progress: 0.5
+---
+
+- [x] Reply to the venue about the room
+- [x] Send the recap → [[Weekly sync]]
+- [/] Draft the launch outline → [[Launch plan]]
+- [ ] Review the pull request
+- [&gt;] Book the dentist</code></pre>
+    </section>
+
+    <section class="install wrap" aria-labelledby="install-h">
+      <h2 id="install-h" class="section-label">Install</h2>
+      <ol class="steps">
+        <li><span class="n">1</span><p>Install <a href="https://github.com/TfTHacker/obsidian42-brat">BRAT</a> from Obsidian's community plugins.</p></li>
+        <li><span class="n">2</span><p>Choose <em>Add beta plugin</em> and paste <code>elihorne/tobedid</code>.</p></li>
+        <li><span class="n">3</span><p>Enable <strong>to be did</strong>. Your first card is waiting.</p></li>
+      </ol>
+      <p class="soon">Coming soon to Obsidian's community plugin directory. Desktop only for now.</p>
+    </section>
+  </main>
+
+  <footer class="footer wrap">
+    <span>to be did · made by <a href="https://github.com/elihorne">Eli Horne</a></span>
+    <span><a href="https://github.com/elihorne/tobedid">GitHub</a> · MIT license</span>
+  </footer>
+
+  <script src="/script.js"></script>
+</body>
+</html>

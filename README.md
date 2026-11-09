@@ -112,7 +112,7 @@ Desktop only. There is no build step and there are no dependencies: `main.js` is
 
 ## Roadmap
 
-The plugin comes first. A website at [tobedid.com](https://tobedid.com) may follow, and maybe sync later. Because a card is plain markdown, anything built later reads and writes the same files.
+The plugin comes first. The website for [tobedid.com](https://tobedid.com) lives in [`site/`](site/): plain HTML, CSS and a little JavaScript with no build step, served by Cloudflare Pages. Sync may come later. Because a card is plain markdown, anything built later reads and writes the same files.
 
 ## Credit
 
