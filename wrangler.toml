@@ -1,0 +1,12 @@
+# tobedid.com: the static site in site/, served by Cloudflare Workers static assets.
+name = "tobedid"
+compatibility_date = "2026-11-10"
+
+routes = [
+  { pattern = "tobedid.com", custom_domain = true },
+  { pattern = "www.tobedid.com", custom_domain = true },
+]
+
+[assets]
+directory = "./site"
+not_found_handling = "404-page"

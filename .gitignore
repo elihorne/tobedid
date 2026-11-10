@@ -1,3 +1,11 @@
 data.json
 node_modules/
 .DS_Store
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+.wrangler/
