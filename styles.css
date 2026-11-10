@@ -118,6 +118,14 @@
 .tobedid .ac-go:hover { color: var(--text-accent); }
 .tobedid .ac-go svg { width: 12px; height: 12px; }
 
+/* Suggestions: faint lines in the empty rows, kept with a click. */
+.tobedid .ac-row.ac-suggestion .ac-text { color: var(--text-faint); cursor: pointer; }
+.tobedid .ac-row.ac-suggestion:hover .ac-text { color: var(--text-muted); }
+.tobedid .ac-row.ac-suggestion .ac-go { opacity: 0; }
+.tobedid .ac-row.ac-suggestion:hover .ac-go { opacity: 1; }
+.tobedid .ac-row.ac-suggestion .ac-keep:hover { color: var(--text-accent); }
+.tobedid.is-typing .ac-row.ac-suggestion > * { visibility: hidden; }
+
 /* Someday: due dates and the overflow line. */
 .tobedid .ac-due { flex: none; color: var(--text-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
 .tobedid .ac-due.is-overdue { color: var(--text-muted); }

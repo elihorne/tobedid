@@ -14,6 +14,8 @@ The point is a short list you actually commit to today. It is not a task databas
 - **Someday** (optional): set a note with a longer list of checkboxes in settings, and › past tomorrow shows it. It is a window onto that list, not a copy: dated items first, soonest due at the top, then in-progress, then the rest. Right-click to **Do today** or **Do tomorrow**, which puts a short headline on that card with a link back. Marks clicked here change the list itself. Lines containing words you choose are hidden, since the card floats over screen shares. The list ends at a heading you name, by default Retired, Archive or Done.
 - **Asking about an item:** Option-click an item (on a card or in Someday) to drop a short reference to it into your chat panel's input, without sending, so you can type the question after it. Right-click has **Ask** and **Copy reference**. The reference names the item, its state, the file and line, and its linked note, which is enough for an agent to find it.
 - **Drag the header** to move it. The minus button shrinks it to a pill, and the pill grows upward when you open it. Right-click the header to open the card as a note, bring items forward, reset its position or hide it.
+- **Suggestions:** proposed lines show faintly in the card's empty rows. Click one (or its +) to keep it, × to dismiss it. They step aside while you type and never count until kept. They come from whoever writes them: a template, a script, an agent.
+- **Lines that keep slipping:** hover a line to see how many days in a row it has been carried. Right-click offers **Send to Someday**, which puts it back on your longer list above its Retired, Archive or Done heading.
 - **Starting a new day:** if the last card has unfinished items, a "Bring forward" link moves them over and marks them carried on the old card.
 - Commands: show or hide, minimize, add an item, bring forward, open today's card. All can take a hotkey.
 - **Clearing the card:** when the last committed line is done, the card marks the moment once, with a brief glow, the marks popping in turn, a small burst from the dot you clicked, and "Did it." Carried items don't count against you. Reloading never replays it, and reduced-motion settings get the state without the animation.
@@ -49,6 +51,15 @@ progress: 0.4
 
 - **Only top-level `- [?] ` lines are items.** Anything else in the file (headings, prose, nested bullets) is left alone and not shown.
 - **A trailing `→ [[note]]` is the item's link.** The card shows the text before it and opens the note on click. A link in the middle of a sentence also works, and its label is shown inline.
+- **Suggestions live in frontmatter** under `suggestions:`, as plain strings or `{ text, source }`. They aren't items, so they don't count toward the card or its progress.
+
+```yaml
+suggestions:
+  - Reply to the venue about the room
+  - { text: Draft the launch outline → [[Launch plan]], source: claude }
+```
+
+- **Carry history isn't stored.** It's read from earlier cards: a line carried (`[>]`) on several consecutive days is the same line slipping.
 - **The frontmatter counts are written by the plugin**, so Bases, Dataview and agents can read progress without parsing the list. `committed` excludes carried items, and `progress` is `done / committed`. They are recomputed whenever the file changes, whoever changed it. You can turn this off in settings.
 
 ## Someday conventions
@@ -58,6 +69,12 @@ Someday reads any note of checkboxes. It understands:
 - **Due dates** from the Tasks plugin (`📅 2026-11-12`, also `📅 Thu 2026-11-12`) and Dataview (`[due:: 2026-11-12]`). Undated items still show, after dated and in-progress ones.
 - **Headlines.** A line that opens with a **bold sentence** shows just that sentence. Otherwise it shows the text before any Tasks metadata, without inline fields or #tags.
 - **States.** Only open (`[ ]`) and in-progress (`[/]`) lines show. Marks changed on the card are written back to the line.
+
+## Design rules
+
+- **Nothing new on the card at rest.** Features appear in the moment they're useful, using something the card already has: an empty row, a tooltip, the pill.
+- **The file is the contract.** Everything the plugin knows is in the card's markdown and frontmatter, or derived from earlier cards. That keeps scripts, agents, other apps and any future sync service on equal footing with the plugin.
+- **The plugin is the surface, not the judgment.** Deciding what belongs on a day is left to the person, or to whatever suggests lines.
 
 ## For other plugins and agents
 
@@ -73,6 +90,10 @@ await card.add('Send the recap → [[Weekly sync]]');               // 'added' |
 await card.add('Finish the deck', { state: 'progress', date: '2026-11-10', force: true });
 await card.setState('Send the recap → [[Weekly sync]]', 'done');  // matches on the exact line text
 card.path();                              // today's card path
+await card.suggest(['Reply to the venue'], { source: 'claude' }); // propose lines; returns how many were new
+await card.suggestions();                 // [{ text, source }]
+await card.acceptSuggestion('Reply to the venue');  // moves it onto the card
+await card.dismissSuggestion('Reply to the venue');
 await card.someday();                     // the Someday list as shown: { line, ch, state, text, headline, due, link }
 ```
 

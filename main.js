@@ -1,7 +1,7 @@
 'use strict';
 // to be did: a floating card of what you commit to today, and the moment it becomes what you did.
 // Each day is a plain markdown file of checkboxes: [ ] new, [/] in progress, [x] done, [>] carried over.
-const { Plugin, PluginSettingTab, Setting, TFile, TFolder, Menu, Notice, normalizePath, moment, setIcon, debounce } = require('obsidian');
+const { Plugin, PluginSettingTab, Setting, TFile, TFolder, Menu, Notice, normalizePath, moment, setIcon, debounce, parseYaml } = require('obsidian');
 
 const STATE = { ' ': 'new', '/': 'progress', 'x': 'done', '>': 'carried' };
 const LABEL = { ' ': 'New', '/': 'In progress', 'x': 'Done', '>': 'Carried over' };
@@ -49,6 +49,22 @@ function display(text) {
 	});
 	body = body.replace(/\*\*|==|__/g, '').trim();
 	return { label: body, target };
+}
+
+// Suggestions live in the card's frontmatter so anything that writes markdown can propose lines:
+//   suggestions:
+//     - Reply to the venue
+//     - { text: Draft the outline → [[Launch plan]], source: claude }
+// They are not items: they don't count until someone keeps one.
+function readSuggestions(data) {
+	const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(data);
+	if (!m) return [];
+	let fm;
+	try { fm = parseYaml(m[1]) || {}; } catch (e) { return []; }
+	const raw = Array.isArray(fm.suggestions) ? fm.suggestions : [];
+	return raw
+		.map((s) => (typeof s === 'string' ? { text: s } : s && typeof s.text === 'string' ? { text: s.text, source: s.source } : null))
+		.filter((s) => s && s.text.trim());
 }
 
 // Task metadata emoji from the Tasks plugin: due, scheduled, start, done, created, priorities, recurrence, id, depends.
@@ -206,6 +222,14 @@ module.exports = class Tobedid extends Plugin {
 			// Let another plugin receive item references: { id, name, available: () => bool, send: async (text) => bool }
 			registerSendTarget: (target) => { self.sendTargets.set(target.id, target); return () => self.sendTargets.delete(target.id); },
 			someday: async () => (await self.somedayItems()).items,
+			// Propose lines without committing to them. Each is a string; source names who suggested it.
+			suggest: (texts, { date = self.today(), source } = {}) => self.addSuggestions(date, [].concat(texts), source),
+			async suggestions(date = self.today()) {
+				const f = self.app.vault.getAbstractFileByPath(self.cardPath(date));
+				return f instanceof TFile ? readSuggestions(await self.app.vault.read(f)) : [];
+			},
+			acceptSuggestion: (text, date = self.today()) => self.acceptSuggestion(date, text),
+			dismissSuggestion: (text, date = self.today()) => self.removeSuggestion(date, text),
 			show: () => self.setVisible(true),
 		};
 	}
@@ -452,7 +476,11 @@ module.exports = class Tobedid extends Plugin {
 		const date = this.settings.collapsed ? today : this.viewDate || today;
 		if (date === SOMEDAY) return this.renderSomeday(token);
 		const file = this.app.vault.getAbstractFileByPath(this.cardPath(date));
-		const items = file instanceof TFile ? parse(await this.app.vault.read(file)) : [];
+		const data = file instanceof TFile ? await this.app.vault.read(file) : '';
+		const items = parse(data);
+		const onCard = new Set(items.map((i) => i.text));
+		const suggestions = readSuggestions(data).filter((s) => !onCard.has(s.text));
+		const carried = await this.carryCounts(date, items);
 		let prev = null;
 		let prevPending = [];
 		if (date === today && !items.some((i) => i.ch !== '>')) {
@@ -492,7 +520,7 @@ module.exports = class Tobedid extends Plugin {
 
 		this.body.empty();
 		const list = this.body.createDiv({ cls: 'ac-list' });
-		for (const it of items) this.renderItem(list, it);
+		for (const it of items) this.renderItem(list, it, carried.get(it.text) || 0);
 
 		this.input = null;
 		if (items.length < this.settings.maxItems) {
@@ -508,6 +536,10 @@ module.exports = class Tobedid extends Plugin {
 				},
 			}));
 			input.value = draft;
+			// Suggestions step aside while you type; the rows stay so the card keeps its height.
+			const typing = () => this.panel.toggleClass('is-typing', !!input.value);
+			input.addEventListener('input', typing);
+			typing();
 			input.addEventListener('keydown', async (e) => {
 				if (e.key === 'Escape') { input.blur(); return; }
 				if (e.key !== 'Enter' || e.isComposing) return;
@@ -518,7 +550,10 @@ module.exports = class Tobedid extends Plugin {
 				this.wantFocus = true;
 				if (!(await this.addFromInput(text, e.shiftKey))) input.value = text;
 			});
-			for (let n = items.length + 1; n < this.settings.maxItems; n++) list.createDiv({ cls: 'ac-row ac-empty' });
+			const room = Math.max(0, this.settings.maxItems - items.length - 1);
+			const shown = suggestions.slice(0, room);
+			for (const s of shown) this.renderSuggestion(list, s, date);
+			for (let n = items.length + 1 + shown.length; n < this.settings.maxItems; n++) list.createDiv({ cls: 'ac-row ac-empty' });
 		}
 
 		if (prevPending.length) {
@@ -646,6 +681,125 @@ module.exports = class Tobedid extends Plugin {
 		menu.addItem((i) => i.setTitle('Copy reference').setIcon('copy').onClick(() => this.send(ref, this.sendTargets.get('clipboard'))));
 	}
 
+	// ---------- suggestions ----------
+
+	async addSuggestions(date, texts, source) {
+		const file = await this.ensureCard(date);
+		const onCard = new Set(parse(await this.app.vault.read(file)).map((i) => i.text));
+		let added = 0;
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			const list = Array.isArray(fm.suggestions) ? fm.suggestions : [];
+			const have = new Set(list.map((s) => (typeof s === 'string' ? s : s && s.text)));
+			for (const raw of texts) {
+				const text = String(raw || '').trim();
+				if (!text || have.has(text) || onCard.has(text)) continue;
+				list.push(source ? { text, source } : text);
+				have.add(text);
+				added++;
+			}
+			if (list.length) fm.suggestions = list;
+		});
+		return added;
+	}
+
+	async removeSuggestion(date, text) {
+		const file = this.app.vault.getAbstractFileByPath(this.cardPath(date));
+		if (!(file instanceof TFile)) return false;
+		let removed = false;
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			if (!Array.isArray(fm.suggestions)) return;
+			const next = fm.suggestions.filter((s) => (typeof s === 'string' ? s : s && s.text) !== text);
+			removed = next.length !== fm.suggestions.length;
+			if (next.length) fm.suggestions = next;
+			else delete fm.suggestions;
+		});
+		return removed;
+	}
+
+	async acceptSuggestion(date, text) {
+		const result = await this.appendItem(date, text);
+		if (result === 'full') { new Notice(`The card holds ${this.settings.maxItems}. Finish or carry something first.`); return result; }
+		await this.removeSuggestion(date, text);
+		return result;
+	}
+
+	renderSuggestion(list, s, date) {
+		const { label } = display(s.text);
+		const row = list.createDiv({ cls: 'ac-row ac-suggestion' });
+		row.createSpan({ cls: 'ac-mark is-ghost' });
+		const text = row.createSpan({ cls: 'ac-text', text: label });
+		text.setAttr('aria-label', s.source ? `Suggested by ${s.source} · click to keep` : 'Suggested · click to keep');
+		const keep = () => this.acceptSuggestion(date, s.text);
+		text.addEventListener('click', keep);
+		const add = row.createSpan({ cls: 'ac-go ac-keep', attr: { 'aria-label': 'Keep' } });
+		setIcon(add, 'plus');
+		add.addEventListener('click', keep);
+		const drop = row.createSpan({ cls: 'ac-go ac-drop', attr: { 'aria-label': 'Dismiss' } });
+		setIcon(drop, 'x');
+		drop.addEventListener('click', () => this.removeSuggestion(date, s.text));
+	}
+
+	// ---------- carry history: read from past cards, never stored ----------
+
+	// How many consecutive earlier cards carried each of these lines forward.
+	async carryCounts(date, items) {
+		const counts = new Map();
+		let pending = new Set(items.filter((i) => i.ch === ' ' || i.ch === '/').map((i) => i.text));
+		if (!pending.size) return counts;
+		const folder = this.app.vault.getAbstractFileByPath(normalizePath(this.settings.folder));
+		if (!(folder instanceof TFolder)) return counts;
+		const cards = folder.children
+			.filter((f) => f instanceof TFile && /^\d{4}-\d{2}-\d{2}$/.test(f.basename) && f.basename < date)
+			.sort((a, b) => b.basename.localeCompare(a.basename))
+			.slice(0, 21);
+		for (const f of cards) {
+			if (!pending.size) break;
+			const carried = new Set(parse(await this.app.vault.cachedRead(f)).filter((i) => i.ch === '>').map((i) => i.text));
+			for (const t of [...pending]) {
+				if (carried.has(t)) counts.set(t, (counts.get(t) || 0) + 1);
+				else pending.delete(t);
+			}
+		}
+		return counts;
+	}
+
+	stopRegex() {
+		const words = (this.settings.somedayStop || '').split(',').map((s) => s.trim()).filter(Boolean)
+			.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+		return words.length ? new RegExp(`^#{1,6}\\s+(?:${words.join('|')})\\b`, 'i') : null;
+	}
+
+	// Take a line off the card and put it back on the longer list, above any Retired/Archive/Done heading.
+	async moveToSomeday(it, date = this.shownDate) {
+		const src = this.somedaySource();
+		if (!src) return;
+		const stop = this.stopRegex();
+		await this.app.vault.process(src, (data) => {
+			const lines = data.split('\n');
+			const line = `- [ ] ${it.text}`;
+			const idx = stop ? lines.findIndex((l) => stop.test(l)) : -1;
+			if (idx === -1) {
+				while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+				lines.push(line, '');
+			} else {
+				let at = idx;
+				while (at > 0 && lines[at - 1].trim() === '') at--;
+				lines.splice(at, 0, line);
+			}
+			return lines.join('\n');
+		});
+		const card = this.app.vault.getAbstractFileByPath(this.cardPath(date));
+		if (card instanceof TFile) {
+			await this.app.vault.process(card, (data) => {
+				const lines = data.split('\n');
+				const m = TASK_RE.exec(lines[it.line] || '');
+				if (m && m[2] === it.text) lines.splice(it.line, 1);
+				return lines.join('\n');
+			});
+		}
+		new Notice(`Moved to ${src.basename}`);
+	}
+
 	// ---------- someday: a window onto a longer list, never a copy of it ----------
 
 	async somedayItems() {
@@ -653,9 +807,7 @@ module.exports = class Tobedid extends Plugin {
 		if (!src) return { src: null, items: [] };
 		const lines = (await this.app.vault.read(src)).split('\n');
 		const hide = (this.settings.somedayHide || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-		const stopWords = (this.settings.somedayStop || '').split(',').map((s) => s.trim()).filter(Boolean)
-			.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-		const stop = stopWords.length ? new RegExp(`^#{1,6}\\s+(?:${stopWords.join('|')})\\b`, 'i') : null;
+		const stop = this.stopRegex();
 		const items = [];
 		for (let i = 0; i < lines.length; i++) {
 			if (stop && stop.test(lines[i])) break;
@@ -749,7 +901,7 @@ module.exports = class Tobedid extends Plugin {
 		await this.app.workspace.getLeaf(false).openFile(file, { eState: { line } });
 	}
 
-	renderItem(list, it) {
+	renderItem(list, it, carriedTimes = 0) {
 		const state = STATE[it.ch] || 'new';
 		const { label, target } = display(it.text);
 		const row = list.createDiv({ cls: `ac-row is-${state}` });
@@ -761,7 +913,10 @@ module.exports = class Tobedid extends Plugin {
 		});
 
 		const text = row.createSpan({ cls: 'ac-text', text: label });
-		if (label.length > 34) text.setAttr('aria-label', label);
+		const tip = [];
+		if (label.length > 34) tip.push(label);
+		if (carriedTimes) tip.push(`Carried ${carriedTimes === 1 ? 'once' : `${carriedTimes} times`}`);
+		if (tip.length) text.setAttr('aria-label', tip.join(' · '));
 		text.addEventListener('click', (e) => {
 			if (!e.altKey) return;
 			e.stopImmediatePropagation();
@@ -785,6 +940,8 @@ module.exports = class Tobedid extends Plugin {
 			if (it.ch === ' ' || it.ch === '/') {
 				const day = moment(this.nextWorkday(this.shownDate), 'YYYY-MM-DD').format('ddd');
 				m.addItem((i) => i.setTitle(`Carry over to ${day}`).setIcon('arrow-right').onClick(() => this.carry(it)));
+				const src = this.somedaySource();
+				if (src) m.addItem((i) => i.setTitle(`Send to Someday`).setIcon('archive').onClick(() => this.moveToSomeday(it)));
 			}
 			m.addSeparator();
 			if (target) m.addItem((i) => i.setTitle('Open linked note').setIcon('arrow-up-right').onClick(() => this.openLink(target)));
