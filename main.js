@@ -531,18 +531,20 @@ module.exports = class Tobedid extends Plugin {
 				if (!mark.querySelector('svg')) setIcon(mark, 'sparkles'); // older Obsidian builds lack party-popper
 			}
 			// A cleared card reads as finished: "Did it." is a label, not a field.
-			// The "Add an item" command still opens the input for one more.
+			// Clicking it, or the "Add an item" command, opens an empty field for one more.
 			const adding = !!draft || hadFocus || this.wantFocus;
 			if (allDone && !adding) {
 				row.addClass('is-cleared-row');
 				row.createSpan({ cls: 'ac-cleared-text', text: 'Did it.' });
+				// Click to add one more: "Did it." clears out and the row becomes a field.
+				row.addEventListener('click', () => { this.wantFocus = true; this.render(); });
 			} else {
 				const input = (this.input = row.createEl('input', {
 					cls: 'ac-input',
 					attr: {
 						type: 'text',
 						spellcheck: 'false',
-						placeholder: allDone ? 'One more?' : items.length ? '' : date < today ? 'Nothing on this card.' : `What matters ${date === today ? 'today' : (this.dayLabel(date, today) || 'that day').toLowerCase()}?`,
+						placeholder: allDone ? '' : items.length ? '' : date < today ? 'Nothing on this card.' : `What matters ${date === today ? 'today' : (this.dayLabel(date, today) || 'that day').toLowerCase()}?`,
 						'aria-label': 'Enter to add · Shift+Enter links the open note',
 					},
 				}));

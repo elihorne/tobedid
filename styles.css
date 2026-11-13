@@ -199,7 +199,7 @@
 	line-height: 28px;
 	font-size: 13px;
 	color: var(--text-muted);
-	cursor: default;
+	cursor: text;
 	user-select: none;
 }
 
