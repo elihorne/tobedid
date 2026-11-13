@@ -530,30 +530,40 @@ module.exports = class Tobedid extends Plugin {
 				setIcon(mark, 'party-popper');
 				if (!mark.querySelector('svg')) setIcon(mark, 'sparkles'); // older Obsidian builds lack party-popper
 			}
-			const input = (this.input = row.createEl('input', {
-				cls: 'ac-input',
-				attr: {
-					type: 'text',
-					spellcheck: 'false',
-					placeholder: allDone ? 'Did it.' : items.length ? '' : date < today ? 'Nothing on this card.' : `What matters ${date === today ? 'today' : (this.dayLabel(date, today) || 'that day').toLowerCase()}?`,
-					'aria-label': 'Enter to add · Shift+Enter links the open note',
-				},
-			}));
-			input.value = draft;
-			// Suggestions step aside while you type; the rows stay so the card keeps its height.
-			const typing = () => this.panel.toggleClass('is-typing', !!input.value);
-			input.addEventListener('input', typing);
-			typing();
-			input.addEventListener('keydown', async (e) => {
-				if (e.key === 'Escape') { input.blur(); return; }
-				if (e.key !== 'Enter' || e.isComposing) return;
-				e.preventDefault();
-				const text = input.value.trim();
-				if (!text) return;
-				input.value = '';
-				this.wantFocus = true;
-				if (!(await this.addFromInput(text, e.shiftKey))) input.value = text;
-			});
+			// A cleared card reads as finished: "Did it." is a label, not a field.
+			// The "Add an item" command still opens the input for one more.
+			const adding = !!draft || hadFocus || this.wantFocus;
+			if (allDone && !adding) {
+				row.addClass('is-cleared-row');
+				row.createSpan({ cls: 'ac-cleared-text', text: 'Did it.' });
+			} else {
+				const input = (this.input = row.createEl('input', {
+					cls: 'ac-input',
+					attr: {
+						type: 'text',
+						spellcheck: 'false',
+						placeholder: allDone ? 'One more?' : items.length ? '' : date < today ? 'Nothing on this card.' : `What matters ${date === today ? 'today' : (this.dayLabel(date, today) || 'that day').toLowerCase()}?`,
+						'aria-label': 'Enter to add · Shift+Enter links the open note',
+					},
+				}));
+				input.value = draft;
+				// Suggestions step aside while you type; the rows stay so the card keeps its height.
+				const typing = () => this.panel.toggleClass('is-typing', !!input.value);
+				input.addEventListener('input', typing);
+				typing();
+				input.addEventListener('keydown', async (e) => {
+					if (e.key === 'Escape') { input.blur(); return; }
+					if (e.key !== 'Enter' || e.isComposing) return;
+					e.preventDefault();
+					const text = input.value.trim();
+					if (!text) return;
+					input.value = '';
+					this.wantFocus = true;
+					if (!(await this.addFromInput(text, e.shiftKey))) input.value = text;
+				});
+				// Leaving an empty field on a cleared card puts "Did it." back.
+				if (allDone) input.addEventListener('blur', () => { if (!input.value.trim()) window.setTimeout(() => this.render(), 0); });
+			}
 			const room = Math.max(0, this.settings.maxItems - items.length - 1);
 			const shown = suggestions.slice(0, room);
 			for (const s of shown) this.renderSuggestion(list, s, date);

@@ -193,6 +193,15 @@
 	user-select: text;
 }
 .tobedid .ac-input::placeholder { color: var(--text-faint); }
+.tobedid .ac-cleared-text {
+	flex: 1;
+	min-width: 0;
+	line-height: 28px;
+	font-size: 13px;
+	color: var(--text-muted);
+	cursor: default;
+	user-select: none;
+}
 
 .tobedid .ac-forward {
 	margin-top: 10px;
