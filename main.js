@@ -525,7 +525,11 @@ module.exports = class Tobedid extends Plugin {
 		this.input = null;
 		if (items.length < this.settings.maxItems) {
 			const row = list.createDiv({ cls: 'ac-row ac-input-row' });
-			row.createSpan({ cls: 'ac-mark is-ghost' });
+			const mark = row.createSpan({ cls: allDone ? 'ac-mark is-cleared' : 'ac-mark is-ghost' });
+			if (allDone) {
+				setIcon(mark, 'party-popper');
+				if (!mark.querySelector('svg')) setIcon(mark, 'sparkles'); // older Obsidian builds lack party-popper
+			}
 			const input = (this.input = row.createEl('input', {
 				cls: 'ac-input',
 				attr: {
